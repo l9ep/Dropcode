@@ -678,17 +678,23 @@ function go(name, data) {
   document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
   const pg = document.getElementById('pg-'+name); if(!pg) return;
   pg.classList.add('on'); _H.push(name); window.scrollTo(0,0); closeDD();
-  if(name==='home')         renderHome();
-  if(name==='explore')      renderEx();
-  if(name==='my-pastes')    renderMy();
-  if(name==='profile')      renderProf();
-  if(name==='edit-profile') loadEP();
-  if(name==='new-paste')    resetNP();
-  if(name==='settings')     loadST_();
-  if(name==='paste-view'&&data) renderPV(data);
+  if(name==='home')              renderHome();
+  if(name==='explore')           renderEx('');
+  if(name==='my-pastes')         renderMy();
+  if(name==='profile')           renderProf();
+  if(name==='edit-profile')      loadEP();
+  if(name==='new-paste'&&!data)  resetNP();
+  if(name==='settings')          loadST_();
+  if(name==='paste-view'&&data)  renderPV(data);
 }
 window.go = go;
-function back(){ _H.pop(); go(_H[_H.length-1]||'home'); }
+function back(){
+  _H.pop();
+  const prev = _H[_H.length-1]||'home';
+  // go() pushes to _H, so pop first to keep history clean
+  _H.pop();
+  go(prev);
+}
 window.back = back;
 
 // ── DROPDOWN ─────────────────────────────────────────
@@ -937,9 +943,12 @@ window.submitDrop=submitDrop;
 async function editDrop(id){
   const snap=await db.collection('pastes').doc(id).get(); if(!snap.exists) return;
   const p={ id:snap.id, ...snap.data() };
-  go('new-paste');
+  // pass truthy data so go() skips resetNP()
+  go('new-paste', true);
+  // wait a tick for the page to show, then fill fields
+  setTimeout(()=>{
   document.getElementById('np-head').textContent='Edit Drop';
-  document.getElementById('np-title').value=p.title||''
+  document.getElementById('np-title').value=p.title||'';
   document.getElementById('np-desc').value=p.desc||'';
   document.getElementById('np-tags').value=(p.tags||[]).join(', ');
   document.getElementById('code-ed').value=p.code;
@@ -964,6 +973,7 @@ async function editDrop(id){
       go('paste-view',{ id, ...snap2.data() });
     }catch(e){ toast(e.message,'err'); }
   };
+  }, 30); // close setTimeout
 }
 window.editDrop=editDrop;
 
@@ -976,7 +986,7 @@ function previewDrop(){
 window.previewDrop=previewDrop;
 
 // ── EXPLORE ───────────────────────────────────────────
-async function renderEx(q){
+async function renderEx(q=''){
   document.getElementById('ex-list').innerHTML='<div style="color:var(--tm);font-size:12px;padding:20px">Loading…</div>';
   try{
     const snap=await db.collection('pastes').where('vis','==','public').orderBy('at','desc').limit(50).get();
@@ -987,7 +997,7 @@ async function renderEx(q){
   }catch(e){ document.getElementById('ex-list').innerHTML=empty('Error',e.message); }
 }
 function setEF(f,el){ ef=f; document.querySelectorAll('#pg-explore .tab').forEach(t=>t.classList.remove('on')); el.classList.add('on'); renderEx(document.getElementById('s-in').value); }
-function doSearch(q){ renderEx(q); }
+function doSearch(q){ renderEx(q||''); }
 window.setEF=setEF; window.doSearch=doSearch;
 
 // ── MY DROPS ──────────────────────────────────────────
